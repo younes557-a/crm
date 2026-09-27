@@ -9,11 +9,11 @@ from . import db
 from .auth import admin_required, validate_password
 from .models import Contact, Election, Setting, User, VoteRecord
 from .services.mailbox import MAIL_SETTINGS, get_config
-from .services.text import normalize
+from .services import importer
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
-# En-têtes CSV acceptés (insensibles à la casse et aux accents simples).
+# Colonnes des fichiers exportés (relisibles par l'import).
 CSV_COLUMNS = {
     "civilite": "civility", "prenom": "first_name", "nom": "last_name", "email": "email",
     "telephone": "phone", "adresse": "address", "code_postal": "postal_code",
@@ -135,56 +135,23 @@ def mail_settings():
 
 # --- Import / export -----------------------------------------------------
 
-def _header_key(name):
-    return normalize(name).replace(" ", "_")
-
-
 @bp.route("/import", methods=["POST"])
 @admin_required
-def import_csv():
+def import_contacts():
     file = request.files.get("file")
     if not file or not file.filename:
-        flash("Choisissez un fichier CSV.", "warning")
+        flash("Choisissez un fichier Excel, CSV ou Word.", "warning")
         return redirect(url_for("admin.index"))
-    raw = file.read()
     try:
-        text = raw.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        text = raw.decode("latin-1")
-    try:
-        dialect = csv.Sniffer().sniff(text[:2048], delimiters=";,\t")
-    except csv.Error:
-        dialect = csv.excel
-    reader = csv.DictReader(io.StringIO(text), dialect=dialect)
-    mapping = {h: CSV_COLUMNS.get(_header_key(h)) for h in reader.fieldnames or []}
-    if "last_name" not in mapping.values():
-        flash("Colonne « nom » introuvable dans le fichier.", "danger")
+        report = importer.import_contacts(
+            file.read(), file.filename,
+            overwrite=bool(request.form.get("overwrite")), user=current_user,
+        )
+    except importer.ImportError_ as exc:
+        db.session.rollback()
+        flash(f"Import impossible : {exc}.", "danger")
         return redirect(url_for("admin.index"))
-
-    created = updated = 0
-    for row in reader:
-        data = {mapping[k]: (v or "").strip() for k, v in row.items() if k in mapping and mapping[k]}
-        if not data.get("last_name"):
-            continue
-        contact = None
-        if data.get("email"):
-            data["email"] = data["email"].lower()
-            contact = Contact.query.filter_by(email=data["email"]).first()
-        if contact is None:
-            contact = Contact.query.filter_by(
-                last_name=data["last_name"], first_name=data.get("first_name", "")
-            ).filter(Contact.postal_code == (data.get("postal_code") or None)).first()
-        if contact is None:
-            contact = Contact(first_name="")
-            db.session.add(contact)
-            created += 1
-        else:
-            updated += 1
-        for field, value in data.items():
-            if value:
-                setattr(contact, field, value)
-    db.session.commit()
-    flash(f"Import terminé : {created} contact(s) créé(s), {updated} mis à jour.", "success")
+    flash(report.summary(), "success")
     return redirect(url_for("admin.index"))
 
 
@@ -206,4 +173,33 @@ def export_csv():
         "﻿" + out.getvalue(),
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment; filename=contacts.csv"},
+    )
+
+
+@bp.route("/export.xlsx")
+@admin_required
+def export_xlsx():
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+
+    election = Election.current()
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Contacts"
+    ws.append(list(CSV_COLUMNS) + ["a_vote", "nb_interactions"])
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+    for c in Contact.query.order_by(Contact.last_name, Contact.first_name):
+        record = c.vote_for(election)
+        ws.append(
+            [getattr(c, field) or "" for field in CSV_COLUMNS.values()]
+            + ["" if record is None else ("oui" if record.voted else "non"), len(c.interactions)]
+        )
+    ws.freeze_panes = "A2"
+    out = io.BytesIO()
+    wb.save(out)
+    return Response(
+        out.getvalue(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=contacts.xlsx"},
     )

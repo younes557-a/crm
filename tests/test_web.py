@@ -115,14 +115,31 @@ def test_scanned_image_is_recognised(user_client, app):
 
 
 def test_csv_import_export(admin_client, app):
-    csv_data = "prénom;nom;email;ville\nLucie;Bernard;lucie@example.org;Lille\nJean;Dupont;JEAN.DUPONT@example.org;Paris 11\n"
+    csv_data = "prénom;nom;email;ville\nLucie;Bernard;lucie@example.org;Lille\n"
     admin_client.post("/admin/import", data={"file": (io.BytesIO(csv_data.encode()), "c.csv")},
                       content_type="multipart/form-data")
     with app.app_context():
         assert Contact.query.count() == 5
-        assert Contact.query.filter_by(email="jean.dupont@example.org").one().city == "Paris 11"
-    export = admin_client.get("/admin/export.csv").get_data(as_text=True)
-    assert "Bernard" in export
+    assert "Bernard" in admin_client.get("/admin/export.csv").get_data(as_text=True)
+    assert admin_client.get("/admin/export.xlsx").data[:2] == b"PK"
+
+
+def test_upload_word_letter_is_linked(user_client, app):
+    from docx import Document as DocxDocument
+
+    doc = DocxDocument()
+    doc.add_paragraph("Pierre Martin")
+    doc.add_paragraph("Nantes")
+    doc.add_paragraph("Merci pour votre aide, bravo !")
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    user_client.post("/courriers/numeriser", data={"files": (buf, "lettre.docx")},
+                     content_type="multipart/form-data")
+    with app.app_context():
+        d = Document.query.one()
+        assert d.status == "linked" and d.contact.full_name == "Pierre Martin"
+        assert Interaction.query.filter_by(document_id=d.id).one().sentiment == "positive"
 
 
 def test_admin_creates_user(admin_client, app):

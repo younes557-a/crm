@@ -1,4 +1,4 @@
-"""Extraction du texte d'un document numérisé (image, PDF ou texte)."""
+"""Extraction du texte d'un document (photo/scan, PDF, Word ou texte)."""
 import io
 import logging
 import shutil
@@ -6,7 +6,7 @@ import shutil
 log = logging.getLogger(__name__)
 
 IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "tif", "tiff", "bmp", "gif", "webp"}
-ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS | {"pdf", "txt"}
+ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS | {"pdf", "txt", "docx"}
 
 
 class OCRUnavailable(RuntimeError):
@@ -61,6 +61,30 @@ def _extract_pdf(data, lang):
     return "\n".join(parts)
 
 
+def _extract_docx(data, lang):
+    from docx import Document as DocxDocument
+    from PIL import Image
+
+    doc = DocxDocument(io.BytesIO(data))
+    parts = [p.text for p in doc.paragraphs if p.text.strip()]
+    for table in doc.tables:
+        for row in table.rows:
+            parts.append(" ".join(cell.text.strip() for cell in row.cells))
+    # En-têtes / pieds de page : souvent l'expéditeur y figure.
+    for section in doc.sections:
+        for part in (section.header, section.footer):
+            parts.extend(p.text for p in part.paragraphs if p.text.strip())
+    # Images collées dans le document (courrier scanné inséré dans Word).
+    if ocr_available():
+        for rel in doc.part.rels.values():
+            if "image" in rel.reltype:
+                try:
+                    parts.append(_ocr_image(Image.open(io.BytesIO(rel.target_part.blob)), lang))
+                except Exception as exc:
+                    log.warning("Image Word ignorée : %s", exc)
+    return "\n".join(parts)
+
+
 def extract_text(data, filename, lang="fra+eng"):
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if ext == "txt":
@@ -71,6 +95,8 @@ def extract_text(data, filename, lang="fra+eng"):
                 continue
     if ext == "pdf":
         return _extract_pdf(data, lang)
+    if ext == "docx":
+        return _extract_docx(data, lang)
     if ext in IMAGE_EXTENSIONS:
         from PIL import Image
 

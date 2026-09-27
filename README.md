@@ -27,7 +27,7 @@ mail et numérisation de courriers rattachés automatiquement à la bonne person
 - **Boîte mail (IMAP/SMTP)** : les e-mails échangés avec les contacts sont
   importés dans leur historique (sans doublon, messages laissés non lus) ;
   envoi d'e-mails depuis la fiche.
-- **Courriers scannés (OCR)** : déposez des photos/scans/PDF ; le texte est lu
+- **Courriers (OCR)** : déposez des photos, scans, PDF ou documents Word ; le texte est lu
   (Tesseract, français) et la personne est **retrouvée automatiquement** :
   nom + prénom (tolérant aux fautes d'OCR, à l'ordre inversé, aux noms composés,
   aux initiales), confirmés par l'adresse, le code postal, la ville, l'e-mail ou
@@ -67,11 +67,26 @@ automatiquement via cron :
 */15 * * * * cd /chemin/crm && .venv/bin/flask --app run sync-mail
 ```
 
-### Import de contacts
+### Import de contacts (Excel, CSV, Word)
 
-CSV (séparateur `;` ou `,`) avec les colonnes : `civilite, prenom, nom, email,
-telephone, adresse, code_postal, ville, bureau_vote, tags, notes`. Un contact
-existant (même e-mail, ou mêmes nom/prénom/code postal) est mis à jour.
+*Administration → Import / export* accepte un classeur **Excel (.xlsx)**, un
+**CSV** ou un **tableau dans un document Word (.docx)**. Les colonnes sont
+reconnues d'après leur intitulé (Prénom, Nom, E-mail/Mail/Courriel, Téléphone/
+Portable, Adresse, Code postal/CP, Ville/Commune, Date de naissance, Bureau de
+vote, Étiquettes, Notes/Commentaires, A voté). Seule la colonne « Nom » est
+obligatoire ; la ligne d'en-tête peut être précédée d'un titre.
+
+**L'import ne supprime jamais rien :**
+- une personne déjà en base (même e-mail, ou mêmes nom et prénom) est complétée,
+  pas dupliquée — réimporter le même fichier ne crée aucun doublon ;
+- une cellule vide n'efface pas l'information existante ;
+- les étiquettes et les notes s'ajoutent à celles déjà présentes ;
+- les champs déjà remplis ne sont remplacés que si vous cochez
+  « Remplacer aussi les informations déjà remplies » ;
+- l'historique des interactions, les votes et les documents restent intacts.
+
+Les zéros initiaux supprimés par Excel sont restaurés (codes postaux, téléphones).
+L'export est disponible en Excel et en CSV, dans un format réimportable.
 
 ## Configuration (variables d'environnement)
 

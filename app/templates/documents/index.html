@@ -9,7 +9,7 @@
   <form method="post" action="{{ url_for('documents.upload') }}" enctype="multipart/form-data" id="upload-form">
     {{ m.csrf() }}
     <div class="dropzone" id="dropzone">
-      <p><strong>Déposez ici les courriers scannés</strong> (photo, scan, PDF) ou</p>
+      <p><strong>Déposez ici les courriers scannés</strong> (photo, scan, PDF, Word) ou</p>
       <input type="file" name="files" id="files" multiple accept="{% for e in allowed %}.{{ e }}{{ ',' if not loop.last }}{% endfor %}" style="max-width:380px">
       <p class="small muted">Formats : {{ allowed|join(', ') }}. Le texte est lu automatiquement et le courrier est rattaché à la personne reconnue (nom, prénom, adresse, e-mail, téléphone). Sur téléphone, vous pouvez prendre directement une photo du courrier.</p>
     </div>

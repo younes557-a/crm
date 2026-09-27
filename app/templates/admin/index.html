@@ -69,13 +69,18 @@
 
     <div class="card">
       <h2>Import / export</h2>
-      <form method="post" action="{{ url_for('admin.import_csv') }}" enctype="multipart/form-data">
+      <form method="post" action="{{ url_for('admin.import_contacts') }}" enctype="multipart/form-data">
         {{ csrf() }}
-        <div class="field"><label>Importer des contacts (CSV)</label><input type="file" name="file" accept=".csv,text/csv" required></div>
-        <p class="small muted">Colonnes reconnues : civilite, prenom, nom, email, telephone, adresse, code_postal, ville, bureau_vote, tags, notes. Séparateur ; ou ,. Les contacts existants (même e-mail) sont mis à jour.</p>
+        <div class="field"><label>Importer des contacts (Excel, CSV ou tableau Word)</label><input type="file" name="file" accept=".xlsx,.xlsm,.csv,.docx" required></div>
+        <p class="small muted">Colonnes reconnues automatiquement : Civilité, Prénom, Nom, E-mail, Téléphone, Adresse, Code postal, Ville, Date de naissance, Bureau de vote, Étiquettes, Notes, A voté. Seule la colonne « Nom » est obligatoire.</p>
+        <p class="small"><strong>Rien n'est supprimé :</strong> les personnes déjà présentes sont reconnues (même e-mail, ou mêmes nom + prénom) et seulement complétées ; les cellules vides n'effacent rien, les étiquettes et notes s'ajoutent, l'historique des interactions est conservé.</p>
+        <div class="field"><label class="checkbox"><input type="checkbox" name="overwrite" value="1"> Remplacer aussi les informations déjà remplies par celles du fichier (ex. nouvelle adresse)</label></div>
         <button class="btn btn-sm">Importer</button>
       </form>
-      <p style="margin-top:1rem"><a class="btn btn-light btn-sm" href="{{ url_for('admin.export_csv') }}">Exporter tous les contacts (CSV)</a></p>
+      <p style="margin-top:1rem" class="row">
+        <a class="btn btn-light btn-sm" href="{{ url_for('admin.export_xlsx') }}">Exporter en Excel</a>
+        <a class="btn btn-light btn-sm" href="{{ url_for('admin.export_csv') }}">Exporter en CSV</a>
+      </p>
     </div>
   </div>
 </div>
