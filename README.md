@@ -36,7 +36,12 @@ mail et numérisation de courriers rattachés automatiquement à la bonne person
 
 ![Courrier reconnu](docs/document.png)
 
-## Installation
+## Mise en ligne
+
+Pour une adresse web accessible à toute l'équipe (ordinateur et téléphone),
+suivez le guide pas à pas **[DEPLOIEMENT.md](DEPLOIEMENT.md)** (Render, ~15 minutes).
+
+## Installation sur un ordinateur
 
 Prérequis : Python 3.10+ et, pour l'OCR des images, Tesseract avec la langue française.
 

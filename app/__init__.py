@@ -48,6 +48,9 @@ def create_app(config=None):
         MAX_CONTENT_LENGTH=30 * 1024 * 1024,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
+        # En ligne (HTTPS derrière un proxy, ex. Render) : cookies sécurisés.
+        SESSION_COOKIE_SECURE=os.environ.get("CRM_BEHIND_PROXY") == "1",
+        REMEMBER_COOKIE_SECURE=os.environ.get("CRM_BEHIND_PROXY") == "1",
         OCR_LANG=os.environ.get("CRM_OCR_LANG", "fra+eng"),
         # Score minimal (0-100) pour rattacher automatiquement un document.
         MATCH_AUTO_THRESHOLD=85,
@@ -58,6 +61,12 @@ def create_app(config=None):
     if not app.config.get("SECRET_KEY"):
         app.config["SECRET_KEY"] = _load_secret_key(app.instance_path)
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+    if os.environ.get("CRM_BEHIND_PROXY") == "1":
+        from werkzeug.middleware.proxy_fix import ProxyFix
+
+        # Vraie IP du visiteur (anti force brute) et schéma https.
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     db.init_app(app)
     login_manager.init_app(app)

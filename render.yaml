@@ -1,0 +1,16 @@
+# Déploiement sur Render : Dashboard → New → Blueprint → choisir ce dépôt.
+services:
+  - type: web
+    name: crm-citoyens
+    runtime: docker
+    branch: claude/electoral-crm-system-v7z3c4
+    plan: starter            # une offre payante est nécessaire pour garder les données (disque)
+    region: frankfurt        # hébergement en Europe (RGPD)
+    healthCheckPath: /static/style.css
+    envVars:
+      - key: CRM_SECRET_KEY
+        generateValue: true
+    disk:
+      name: donnees
+      mountPath: /data
+      sizeGB: 1
