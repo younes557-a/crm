@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Messagerie — administration{% endblock %}
+{% block content %}
+<h1>Relier une boîte mail</h1>
+<form class="card" method="post">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <p class="small muted">Gmail : imap.gmail.com / smtp.gmail.com avec un « mot de passe d'application ». Outlook / Office 365 : outlook.office365.com / smtp.office365.com. OVH : ssl0.ovh.net.</p>
+  <h2>Compte</h2>
+  <div class="grid grid-3">
+    <div class="field"><label>Adresse / identifiant</label><input name="mail_username" value="{{ cfg.mail_username }}" autocomplete="off"></div>
+    <div class="field"><label>Mot de passe {% if cfg.has_password %}<span class="muted">(laisser vide pour conserver)</span>{% endif %}</label><input type="password" name="mail_password" autocomplete="new-password"></div>
+    <div class="field"><label>Adresse d'expédition (si différente)</label><input name="mail_from" value="{{ cfg.mail_from }}"></div>
+  </div>
+  <h2>Réception (IMAP, SSL)</h2>
+  <div class="grid grid-4">
+    <div class="field"><label>Serveur IMAP</label><input name="mail_imap_host" value="{{ cfg.mail_imap_host }}" placeholder="imap.exemple.fr"></div>
+    <div class="field"><label>Port</label><input name="mail_imap_port" value="{{ cfg.mail_imap_port }}"></div>
+    <div class="field"><label>Dossier de réception</label><input name="mail_inbox_folder" value="{{ cfg.mail_inbox_folder }}"></div>
+    <div class="field"><label>Dossier des envoyés (optionnel)</label><input name="mail_sent_folder" value="{{ cfg.mail_sent_folder }}" placeholder="Sent / [Gmail]/Messages envoyés"></div>
+  </div>
+  <div class="field" style="max-width:260px"><label>Première synchro : jours d'historique</label><input name="mail_days_back" value="{{ cfg.mail_days_back }}"></div>
+  <h2>Envoi (SMTP)</h2>
+  <div class="grid grid-3">
+    <div class="field"><label>Serveur SMTP</label><input name="mail_smtp_host" value="{{ cfg.mail_smtp_host }}" placeholder="smtp.exemple.fr"></div>
+    <div class="field"><label>Port (587 STARTTLS ou 465 SSL)</label><input name="mail_smtp_port" value="{{ cfg.mail_smtp_port }}"></div>
+  </div>
+  <div class="field"><label class="checkbox"><input type="checkbox" name="reset_sync" value="1"> Réimporter tout l'historique à la prochaine synchronisation</label></div>
+  <button class="btn" type="submit">Enregistrer</button>
+</form>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Messagerie{% endblock %}
+{% block content %}
+<h1>Messagerie</h1>
+<div class="card">
+  {% if configured %}
+  <div class="row spread">
+    <div>
+      Boîte reliée : <strong>{{ mailbox }}</strong><br>
+      <span class="small muted">Dernière synchronisation : {{ last_sync.replace('T', ' ') if last_sync else 'jamais' }} (UTC)</span>
+    </div>
+    <form method="post" action="{{ url_for('mail.sync') }}">{{ m.csrf() }}<button class="btn">Synchroniser maintenant</button></form>
+  </div>
+  <p class="small muted">Chaque e-mail échangé avec une adresse présente dans vos contacts est ajouté à l'historique de la personne, avec détection de la tonalité. Les messages restent non lus sur votre messagerie.</p>
+  {% else %}
+  <p>Aucune boîte mail n'est reliée.{% if is_admin %} <a href="{{ url_for('admin.mail_settings') }}">Configurer la messagerie</a>.{% else %} Demandez à un administrateur de la configurer.{% endif %}</p>
+  {% endif %}
+</div>
+<div class="card">
+  <h2>Derniers e-mails rattachés</h2>
+  <table>
+    <tr><th>Date</th><th>Contact</th><th>Sens</th><th>Objet</th><th>Tonalité</th></tr>
+    {% for i in recent %}
+    <tr>
+      <td>{{ i.date|datefr(true) }}</td>
+      <td><a href="{{ url_for('contacts.show', contact_id=i.contact_id) }}">{{ i.contact.full_name }}</a></td>
+      <td>{{ 'Reçu' if i.direction == 'entrant' else 'Envoyé' }}</td>
+      <td>{{ i.subject }}</td>
+      <td>{{ m.sentiment_pill(i.sentiment) }}</td>
+    </tr>
+    {% else %}<tr><td colspan="5" class="muted">Aucun e-mail importé.</td></tr>{% endfor %}
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Modifier' if contact.id else 'Nouveau contact' }}{% endblock %}
+{% block content %}
+<h1>{{ 'Modifier ' ~ contact.full_name if contact.id else 'Nouveau contact' }}</h1>
+<form class="card" method="post">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="grid grid-4">
+    <div class="field"><label>Civilité</label>
+      <select name="civility">
+        {% for v in ['', 'M.', 'Mme'] %}<option value="{{ v }}" {{ 'selected' if (contact.civility or '') == v }}>{{ v or '—' }}</option>{% endfor %}
+      </select></div>
+    <div class="field"><label>Prénom</label><input name="first_name" value="{{ contact.first_name or '' }}"></div>
+    <div class="field"><label>Nom *</label><input name="last_name" value="{{ contact.last_name or '' }}" required></div>
+    <div class="field"><label>Date de naissance</label><input type="date" name="birth_date" value="{{ contact.birth_date or '' }}"></div>
+  </div>
+  <div class="grid grid-3">
+    <div class="field"><label>E-mail</label><input type="email" name="email" value="{{ contact.email or '' }}"></div>
+    <div class="field"><label>Téléphone</label><input name="phone" value="{{ contact.phone or '' }}"></div>
+    <div class="field"><label>Bureau de vote</label><input name="polling_station" value="{{ contact.polling_station or '' }}"></div>
+  </div>
+  <div class="grid grid-3">
+    <div class="field"><label>Adresse</label><input name="address" value="{{ contact.address or '' }}"></div>
+    <div class="field"><label>Code postal</label><input name="postal_code" value="{{ contact.postal_code or '' }}"></div>
+    <div class="field"><label>Ville</label><input name="city" value="{{ contact.city or '' }}"></div>
+  </div>
+  <div class="field"><label>Étiquettes (séparées par des virgules)</label><input name="tags" value="{{ contact.tags or '' }}" placeholder="bénévole, commerçant, quartier nord…"></div>
+  <div class="field"><label>Notes</label><textarea name="notes">{{ contact.notes or '' }}</textarea></div>
+  <button class="btn" type="submit">Enregistrer</button>
+  <a href="{{ url_for('contacts.show', contact_id=contact.id) if contact.id else url_for('contacts.index') }}">Annuler</a>
+</form>
+{% endblock %}

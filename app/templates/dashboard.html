@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Tableau de bord{% endblock %}
+{% block content %}
+<h1>Tableau de bord</h1>
+<div class="grid grid-4">
+  <div class="card stat"><div class="value">{{ total_contacts }}</div><div class="label">Contacts</div></div>
+  <div class="card stat"><div class="value">{{ interactions_30d }}</div><div class="label">Interactions (30 jours)</div></div>
+  <div class="card stat">
+    {% if election %}<div class="value">{{ turnout }} %</div><div class="label">Ont voté — {{ election.name }} ({{ voted }})</div>
+    {% else %}<div class="value">—</div><div class="label">Aucune élection en cours{% if is_admin %} · <a href="{{ url_for('admin.index') }}">en créer une</a>{% endif %}</div>{% endif %}
+  </div>
+  <div class="card stat"><div class="value">{{ to_review }}</div><div class="label"><a href="{{ url_for('documents.index', status='review') }}">Courriers à vérifier</a></div></div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Dernières interactions</h2>
+    {% if recent %}
+    <table>
+      <tr><th>Date</th><th>Contact</th><th>Type</th><th>Objet</th><th>Tonalité</th></tr>
+      {% for i in recent %}
+      <tr>
+        <td>{{ i.date|datefr }}</td>
+        <td><a href="{{ url_for('contacts.show', contact_id=i.contact_id) }}">{{ i.contact.full_name }}</a></td>
+        <td>{{ i.kind_label }}</td>
+        <td>{{ (i.subject or '')|truncate(50) }}</td>
+        <td>{{ m.sentiment_pill(i.sentiment) }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="muted">Aucune interaction pour l'instant. <a href="{{ url_for('contacts.create') }}">Ajoutez un premier contact</a>.</p>{% endif %}
+  </div>
+  <div>
+    <div class="card">
+      <h2>Tonalité des échanges (30 jours)</h2>
+      {{ m.sentbar(sentiment_counts, big=True) }}
+      <div class="legend">
+        <span><i style="background:var(--pos)"></i>{{ sentiment_counts.get('positive', 0) }} positives</span>
+        <span><i style="background:var(--neu)"></i>{{ sentiment_counts.get('neutral', 0) }} neutres</span>
+        <span><i style="background:var(--neg)"></i>{{ sentiment_counts.get('negative', 0) }} négatives</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Actions rapides</h2>
+      <p><a class="btn" href="{{ url_for('contacts.create') }}">+ Nouveau contact</a></p>
+      <p><a class="btn btn-light" href="{{ url_for('documents.index') }}">Numériser un courrier</a></p>
+      {% if mail_configured %}
+      <form method="post" action="{{ url_for('mail.sync') }}">{{ m.csrf() }}<button class="btn btn-light">Synchroniser la boîte mail</button></form>
+      {% else %}<p class="small muted">Boîte mail non reliée{% if is_admin %} — <a href="{{ url_for('admin.mail_settings') }}">configurer</a>{% endif %}.</p>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

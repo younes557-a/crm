@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}CRM{% endblock %} · CRM Citoyens</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% if current_user.is_authenticated %}
+<header class="topbar">
+  <a class="brand" href="{{ url_for('main.dashboard') }}">CRM Citoyens</a>
+  <nav>
+    {% set ep = request.endpoint or '' %}
+    <a href="{{ url_for('main.dashboard') }}" class="{{ 'active' if ep.startswith('main.') }}">Tableau de bord</a>
+    <a href="{{ url_for('contacts.index') }}" class="{{ 'active' if ep.startswith('contacts.') }}">Contacts</a>
+    <a href="{{ url_for('documents.index') }}" class="{{ 'active' if ep.startswith('documents.') }}">Courriers</a>
+    <a href="{{ url_for('mail.index') }}" class="{{ 'active' if ep.startswith('mail.') }}">Messagerie</a>
+    {% if is_admin %}<a href="{{ url_for('admin.index') }}" class="{{ 'active' if ep.startswith('admin.') }}">Administration</a>{% endif %}
+  </nav>
+  <div class="user">
+    <a href="{{ url_for('auth.account') }}">{{ current_user.display_name }}</a>
+    {% if is_admin %}<span class="badge-role">ADMIN</span>{% endif %}
+    <form class="inline-form" method="post" action="{{ url_for('auth.logout') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button type="submit">Déconnexion</button>
+    </form>
+  </div>
+</header>
+{% endif %}
+<main>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}<div class="flash flash-{{ category }}">{{ message }}</div>{% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+{% block scripts %}{% endblock %}
+</body>
+</html>

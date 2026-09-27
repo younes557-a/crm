@@ -1,0 +1,17 @@
+<div class="grid grid-4">
+  <div class="field"><label>Type</label>
+    <select name="kind">{% for k, label in INTERACTION_KINDS.items() %}<option value="{{ k }}" {{ 'selected' if interaction and interaction.kind == k }}>{{ label }}</option>{% endfor %}</select></div>
+  <div class="field"><label>Sens</label>
+    <select name="direction">
+      <option value="sortant" {{ 'selected' if interaction and interaction.direction == 'sortant' }}>Nous → la personne</option>
+      <option value="entrant" {{ 'selected' if interaction and interaction.direction == 'entrant' }}>La personne → nous</option>
+    </select></div>
+  <div class="field"><label>Date</label><input type="datetime-local" name="date" value="{{ (interaction.date if interaction else now).strftime('%Y-%m-%dT%H:%M') }}"></div>
+  <div class="field"><label>Tonalité</label>
+    <select name="sentiment">
+      <option value="auto">Détection automatique</option>
+      {% for k, label in SENTIMENTS.items() %}<option value="{{ k }}" {{ 'selected' if interaction and not interaction.sentiment_auto and interaction.sentiment == k }}>{{ label }}</option>{% endfor %}
+    </select></div>
+</div>
+<div class="field"><label>Objet</label><input name="subject" value="{{ interaction.subject if interaction and interaction.subject else '' }}"></div>
+<div class="field"><label>Compte rendu</label><textarea name="content">{{ interaction.content if interaction and interaction.content else '' }}</textarea></div>

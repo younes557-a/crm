@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Installation{% endblock %}
+{% block content %}
+<div class="card auth-box">
+  <h1>Bienvenue</h1>
+  <p class="muted">Première utilisation : créez le compte <strong>administrateur</strong>. Vous pourrez ensuite créer les comptes utilisateurs depuis l'espace Administration.</p>
+  <form method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="field"><label>Nom complet</label><input name="full_name"></div>
+    <div class="field"><label>Identifiant</label><input name="username" required autocomplete="username"></div>
+    <div class="field"><label>Mot de passe (8 caractères min.)</label><input type="password" name="password" required minlength="8" autocomplete="new-password"></div>
+    <div class="field"><label>Confirmation</label><input type="password" name="confirm" required minlength="8" autocomplete="new-password"></div>
+    <button class="btn" type="submit">Créer le compte administrateur</button>
+  </form>
+</div>
+{% endblock %}

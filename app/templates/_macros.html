@@ -1,0 +1,20 @@
+{% macro csrf() %}<input type="hidden" name="_csrf" value="{{ csrf_token() }}">{% endmacro %}
+
+{% macro sentiment_pill(value) %}<span class="pill pill-{{ value }}">{{ SENTIMENTS.get(value, value) }}</span>{% endmacro %}
+
+{% macro sentbar(counts, big=False) %}
+  {% set total = (counts.get('positive', 0) + counts.get('neutral', 0) + counts.get('negative', 0)) %}
+  <div class="sentbar{{ ' big' if big }}" title="{{ counts.get('positive', 0) }} positive(s), {{ counts.get('neutral', 0) }} neutre(s), {{ counts.get('negative', 0) }} négative(s)">
+    {% if total %}
+      {% for key in ['positive', 'neutral', 'negative'] %}
+        <span class="{{ key }}" style="width: {{ 100 * counts.get(key, 0) / total }}%"></span>
+      {% endfor %}
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{% macro vote_pill(record) %}
+  {% if record is none %}<span class="pill pill-unknown">Inconnu</span>
+  {% elif record.voted %}<span class="pill pill-yes">A voté</span>
+  {% else %}<span class="pill pill-no">N'a pas voté</span>{% endif %}
+{% endmacro %}

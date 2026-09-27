@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ doc.original_name }}{% endblock %}
+{% block content %}
+<div class="row spread">
+  <h1>{{ doc.original_name }}</h1>
+  <div class="row">
+    <a class="btn btn-light" href="{{ url_for('documents.file', doc_id=doc.id, dl=1) }}">Télécharger</a>
+    <form method="post" action="{{ url_for('documents.reprocess', doc_id=doc.id) }}">{{ m.csrf() }}<button class="btn btn-light">Relancer la reconnaissance</button></form>
+    {% if is_admin %}
+    <form method="post" action="{{ url_for('documents.delete', doc_id=doc.id) }}" onsubmit="return confirm('Supprimer ce document ?')">{{ m.csrf() }}<button class="btn btn-danger">Supprimer</button></form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div>
+    <div class="card">
+      <div class="row spread">
+        <h2>Rattachement</h2>
+        <span class="pill pill-{{ doc.status }}">{{ doc.status_label }}</span>
+      </div>
+      {% if doc.contact %}
+        <p>Ce courrier est rattaché à <a href="{{ url_for('contacts.show', contact_id=doc.contact_id) }}"><strong>{{ doc.contact.full_name }}</strong></a>
+        {% if doc.match_score is not none %}<span class="muted">(meilleur score de reconnaissance : {{ '%.0f'|format(doc.match_score) }} %)</span>{% endif %}.</p>
+      {% elif candidates %}
+        <p>Plusieurs personnes possibles ou correspondance incertaine : confirmez la bonne personne.</p>
+      {% else %}
+        <p>Aucune personne de la base n'a été reconnue dans ce document. Choisissez le contact ci-dessous, ou <a href="{{ url_for('contacts.create') }}">créez-le</a> puis relancez la reconnaissance.</p>
+      {% endif %}
+
+      {% if candidates %}
+      <table>
+        <tr><th>Personne suggérée</th><th>Score</th><th>Indices</th><th></th></tr>
+        {% for contact, cand in candidates %}
+        <tr>
+          <td><a href="{{ url_for('contacts.show', contact_id=contact.id) }}">{{ contact.full_name }}</a><br><span class="small muted">{{ contact.postal_code or '' }} {{ contact.city or '' }}</span></td>
+          <td>{{ '%.0f'|format(cand.score) }} %</td>
+          <td class="small">{{ cand.reasons|join(', ') }}</td>
+          <td>
+            {% if doc.contact_id != contact.id %}
+            <form method="post" action="{{ url_for('documents.link', doc_id=doc.id) }}">{{ m.csrf() }}<input type="hidden" name="contact_id" value="{{ contact.id }}"><button class="btn btn-sm">Rattacher</button></form>
+            {% else %}<span class="pill pill-linked">✓</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('documents.link', doc_id=doc.id) }}" style="margin-top:1rem">
+        {{ m.csrf() }}
+        <label for="contact-search">Rattacher à un autre contact</label>
+        <input id="contact-search" placeholder="Tapez un nom…" autocomplete="off">
+        <input type="hidden" name="contact_id" id="contact-id">
+        <div class="search-results" id="contact-results" hidden></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Texte reconnu</h2>
+      <div class="ocr">{{ doc.ocr_text or 'Aucun texte extrait.' }}</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Aperçu</h2>
+    {% set ext = doc.stored_name.rsplit('.', 1)[-1] %}
+    {% if ext in ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'] %}
+      <img class="preview" src="{{ url_for('documents.file', doc_id=doc.id) }}" alt="Aperçu du document">
+    {% elif ext == 'pdf' %}
+      <iframe src="{{ url_for('documents.file', doc_id=doc.id) }}" style="width:100%;height:600px;border:1px solid var(--border);border-radius:7px"></iframe>
+    {% else %}
+      <p class="muted">Aperçu indisponible pour ce format.</p>
+    {% endif %}
+    <p class="small muted">Importé le {{ doc.created_at|datefr(true) }}{% if doc.uploaded_by %} par {{ doc.uploaded_by.display_name }}{% endif %}.</p>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const box = document.getElementById('contact-search'), out = document.getElementById('contact-results');
+  let timer;
+  box.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      if (box.value.trim().length < 2) { out.hidden = true; return; }
+      const res = await fetch('{{ url_for('documents.contact_search') }}?q=' + encodeURIComponent(box.value));
+      const data = await res.json();
+      out.replaceChildren(...data.results.map(r => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.textContent = r.label;
+        b.onclick = () => { document.getElementById('contact-id').value = r.id; box.form.submit(); };
+        return b;
+      }));
+      out.hidden = !data.results.length;
+    }, 200);
+  });
+</script>
+{% endblock %}

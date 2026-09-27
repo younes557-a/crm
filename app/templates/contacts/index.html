@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Contacts{% endblock %}
+{% block content %}
+<div class="row spread">
+  <h1>Contacts <span class="muted small">({{ page.total }})</span></h1>
+  <a class="btn" href="{{ url_for('contacts.create') }}">+ Nouveau contact</a>
+</div>
+<form class="card row inline" method="get">
+  <input name="q" value="{{ q }}" placeholder="Nom, e-mail, ville, téléphone…" style="flex:1;min-width:220px">
+  <input name="tag" value="{{ tag }}" placeholder="Étiquette">
+  {% if election %}
+  <select name="vote">
+    <option value="">Participation : tous</option>
+    <option value="oui" {{ 'selected' if vote == 'oui' }}>A voté</option>
+    <option value="non" {{ 'selected' if vote == 'non' }}>N'a pas voté / inconnu</option>
+  </select>
+  {% endif %}
+  <button class="btn" type="submit">Filtrer</button>
+  {% if q or tag or vote %}<a href="{{ url_for('contacts.index') }}">Réinitialiser</a>{% endif %}
+</form>
+<div class="card">
+  <table>
+    <tr><th>Nom</th><th>Ville</th><th>Contact</th><th>Étiquettes</th>{% if election %}<th>{{ election.name }}</th>{% endif %}<th>Interactions</th></tr>
+    {% for c in page.items %}
+    {% set s = stats.get(c.id, {}) %}
+    <tr>
+      <td><a href="{{ url_for('contacts.show', contact_id=c.id) }}"><strong>{{ c.last_name|upper }}</strong> {{ c.first_name }}</a></td>
+      <td>{{ c.postal_code or '' }} {{ c.city or '' }}</td>
+      <td class="small">{{ c.email or '' }}<br>{{ c.phone or '' }}</td>
+      <td>{% for t in c.tag_list %}<span class="pill pill-tag">{{ t }}</span> {% endfor %}</td>
+      {% if election %}
+      <td>
+        {% set rec = c.vote_for(election) %}
+        <form method="post" action="{{ url_for('contacts.set_vote', contact_id=c.id) }}" class="inline-form">
+          {{ m.csrf() }}
+          <input type="hidden" name="election_id" value="{{ election.id }}">
+          <input type="hidden" name="next" value="{{ request.full_path }}">
+          {% if rec and rec.voted %}
+            {{ m.vote_pill(rec) }} <button class="link-btn small" name="voted" value="inconnu" title="Annuler">annuler</button>
+          {% else %}
+            {{ m.vote_pill(rec) }} <button class="btn btn-sm btn-light" name="voted" value="oui">✓ A voté</button>
+          {% endif %}
+        </form>
+      </td>
+      {% endif %}
+      <td style="min-width:110px">{{ m.sentbar(s) }}<span class="small muted">{{ s.values()|sum }}</span></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="muted">Aucun contact trouvé.</td></tr>
+    {% endfor %}
+  </table>
+  {% if page.pages > 1 %}
+  <div class="pagination">
+    {% if page.has_prev %}<a class="btn btn-sm btn-light" href="{{ url_for('contacts.index', page=page.prev_num, q=q, tag=tag, vote=vote) }}">← Précédent</a>{% endif %}
+    <span class="muted">Page {{ page.page }} / {{ page.pages }}</span>
+    {% if page.has_next %}<a class="btn btn-sm btn-light" href="{{ url_for('contacts.index', page=page.next_num, q=q, tag=tag, vote=vote) }}">Suivant →</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

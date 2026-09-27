@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Courriers{% endblock %}
+{% block content %}
+<h1>Courriers numérisés</h1>
+<div class="card">
+  <h2>Numériser / importer des courriers</h2>
+  {% if not ocr_ok %}<div class="flash flash-warning">Le moteur OCR (Tesseract) n'est pas installé : seuls les PDF contenant du texte et les fichiers .txt seront lus.</div>{% endif %}
+  <form method="post" action="{{ url_for('documents.upload') }}" enctype="multipart/form-data" id="upload-form">
+    {{ m.csrf() }}
+    <div class="dropzone" id="dropzone">
+      <p><strong>Déposez ici les courriers scannés</strong> (photo, scan, PDF) ou</p>
+      <input type="file" name="files" id="files" multiple accept="{% for e in allowed %}.{{ e }}{{ ',' if not loop.last }}{% endfor %}" style="max-width:380px">
+      <p class="small muted">Formats : {{ allowed|join(', ') }}. Le texte est lu automatiquement et le courrier est rattaché à la personne reconnue (nom, prénom, adresse, e-mail, téléphone). Sur téléphone, vous pouvez prendre directement une photo du courrier.</p>
+    </div>
+    <p><button class="btn" type="submit">Analyser et rattacher</button></p>
+  </form>
+</div>
+
+<div class="card">
+  <div class="row spread">
+    <h2>Documents</h2>
+    <div class="row small">
+      <a href="{{ url_for('documents.index') }}" class="{{ 'muted' if status }}">Tous</a>
+      <a href="{{ url_for('documents.index', status='review') }}">À vérifier</a>
+      <a href="{{ url_for('documents.index', status='unmatched') }}">Non reconnus</a>
+      <a href="{{ url_for('documents.index', status='linked') }}">Rattachés</a>
+    </div>
+  </div>
+  <table>
+    <tr><th>Date</th><th>Fichier</th><th>Statut</th><th>Contact</th><th>Confiance</th></tr>
+    {% for d in docs %}
+    <tr>
+      <td>{{ d.created_at|datefr(true) }}</td>
+      <td><a href="{{ url_for('documents.show', doc_id=d.id) }}">{{ d.original_name }}</a></td>
+      <td><span class="pill pill-{{ d.status }}">{{ d.status_label }}</span></td>
+      <td>{% if d.contact %}<a href="{{ url_for('contacts.show', contact_id=d.contact_id) }}">{{ d.contact.full_name }}</a>{% else %}—{% endif %}</td>
+      <td>{{ '%.0f %%'|format(d.match_score) if d.match_score is not none else '—' }}</td>
+    </tr>
+    {% else %}<tr><td colspan="5" class="muted">Aucun document.</td></tr>{% endfor %}
+  </table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const dz = document.getElementById('dropzone'), input = document.getElementById('files');
+  ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('over'); }));
+  dz.addEventListener('drop', e => { input.files = e.dataTransfer.files; });
+</script>
+{% endblock %}

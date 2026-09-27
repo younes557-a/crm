@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Connexion{% endblock %}
+{% block content %}
+<div class="card auth-box">
+  <h1>Connexion</h1>
+  <form method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="field"><label for="username">Identifiant</label><input id="username" name="username" required autofocus autocomplete="username"></div>
+    <div class="field"><label for="password">Mot de passe</label><input id="password" type="password" name="password" required autocomplete="current-password"></div>
+    <div class="field"><label class="checkbox"><input type="checkbox" name="remember" value="1"> Rester connecté</label></div>
+    <button class="btn" type="submit">Se connecter</button>
+  </form>
+</div>
+{% endblock %}

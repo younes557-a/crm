@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ contact.full_name }}{% endblock %}
+{% block content %}
+<div class="row spread">
+  <h1>{{ contact.civility or '' }} {{ contact.first_name }} <strong>{{ contact.last_name|upper }}</strong></h1>
+  <div class="row">
+    <a class="btn btn-light" href="{{ url_for('contacts.edit', contact_id=contact.id) }}">Modifier</a>
+    {% if is_admin %}
+    <form method="post" action="{{ url_for('contacts.delete', contact_id=contact.id) }}" onsubmit="return confirm('Supprimer définitivement ce contact et son historique ?')">
+      {{ m.csrf() }}<button class="btn btn-danger">Supprimer</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card synthesis {{ summary.overall }}">
+  <div class="row spread">
+    <div>
+      <div class="muted small">SYNTHÈSE DES INTERACTIONS</div>
+      <div class="stance">{{ summary.stance }}</div>
+    </div>
+    <div style="flex:1;max-width:420px">
+      {{ m.sentbar(summary.counts, big=True) }}
+      <div class="legend">
+        <span><i style="background:var(--pos)"></i>{{ summary.counts.positive }} positive{{ 's' if summary.counts.positive > 1 }} ({{ summary.percent.positive }} %)</span>
+        <span><i style="background:var(--neu)"></i>{{ summary.counts.neutral }} neutre{{ 's' if summary.counts.neutral > 1 }} ({{ summary.percent.neutral }} %)</span>
+        <span><i style="background:var(--neg)"></i>{{ summary.counts.negative }} négative{{ 's' if summary.counts.negative > 1 }} ({{ summary.percent.negative }} %)</span>
+      </div>
+    </div>
+  </div>
+  <p style="margin-bottom:0">{{ summary.text }}</p>
+  {% if summary.by_kind %}
+  <p class="small muted" style="margin:.4rem 0 0">
+    {% for label, n in summary.by_kind %}{{ label }} : {{ n }}{{ ' · ' if not loop.last }}{% endfor %}
+    {% if summary.trend %} · Tendance : <strong>{{ summary.trend }}</strong>{% endif %}
+  </p>
+  {% endif %}
+</div>
+
+<div class="grid grid-2">
+  <div>
+    <div class="card">
+      <details {{ 'open' if not contact.interactions }}>
+        <summary>+ Ajouter une interaction</summary>
+        <form method="post" action="{{ url_for('contacts.add_interaction', contact_id=contact.id) }}" style="margin-top:.75rem">
+          {{ m.csrf() }}
+          {% set interaction = none %}
+          {% include "contacts/_interaction_fields.html" %}
+          <button class="btn" type="submit">Enregistrer l'interaction</button>
+        </form>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>Historique ({{ contact.interactions|length }})</h2>
+      {% if contact.interactions %}
+      <ul class="timeline">
+        {% for i in contact.interactions %}
+        <li class="{{ i.sentiment }}">
+          <div class="row spread">
+            <strong>{{ i.kind_label }}{% if i.subject %} — {{ i.subject }}{% endif %}</strong>
+            {{ m.sentiment_pill(i.sentiment) }}
+          </div>
+          <div class="meta">
+            {{ i.date|datefr(true) }} · {{ 'reçu' if i.direction == 'entrant' else 'émis' }}
+            {% if i.user %} · par {{ i.user.display_name }}{% endif %}
+            {% if i.source == 'email' %} · importé de la boîte mail{% elif i.source == 'scan' %} · courrier numérisé{% endif %}
+            {% if i.sentiment_auto %} · tonalité détectée automatiquement{% endif %}
+          </div>
+          {% if i.content %}<div class="body">{{ i.content }}</div>{% endif %}
+          <div class="small row">
+            {% if i.document_id %}<a href="{{ url_for('documents.show', doc_id=i.document_id) }}">Voir le document</a>{% endif %}
+            <a href="{{ url_for('contacts.edit_interaction', interaction_id=i.id) }}">Modifier</a>
+            {% if is_admin or i.user_id == current_user.id %}
+            <form class="inline-form" method="post" action="{{ url_for('contacts.delete_interaction', interaction_id=i.id) }}" onsubmit="return confirm('Supprimer cette interaction ?')">
+              {{ m.csrf() }}<button class="link-btn danger small">Supprimer</button>
+            </form>
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="muted">Aucune interaction enregistrée.</p>{% endif %}
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Coordonnées</h2>
+      <dl class="info">
+        <dt>E-mail</dt><dd>{% if contact.email %}<a href="mailto:{{ contact.email }}">{{ contact.email }}</a>{% else %}—{% endif %}</dd>
+        <dt>Téléphone</dt><dd>{% if contact.phone %}<a href="tel:{{ contact.phone }}">{{ contact.phone }}</a>{% else %}—{% endif %}</dd>
+        <dt>Adresse</dt><dd>{{ contact.address or '' }}<br>{{ contact.postal_code or '' }} {{ contact.city or '' }}</dd>
+        <dt>Naissance</dt><dd>{{ contact.birth_date|datefr }}</dd>
+        <dt>Bureau de vote</dt><dd>{{ contact.polling_station or '—' }}</dd>
+        <dt>Étiquettes</dt><dd>{% for t in contact.tag_list %}<span class="pill pill-tag">{{ t }}</span> {% else %}—{% endfor %}</dd>
+      </dl>
+      {% if contact.notes %}<p style="white-space:pre-wrap">{{ contact.notes }}</p>{% endif %}
+    </div>
+
+    <div class="card">
+      <h2>Participation au vote</h2>
+      {% for e in elections %}
+      <form method="post" action="{{ url_for('contacts.set_vote', contact_id=contact.id) }}" class="row spread" style="margin-bottom:.5rem">
+        {{ m.csrf() }}<input type="hidden" name="election_id" value="{{ e.id }}">
+        <div>
+          <strong>{{ e.name }}</strong>{% if e.is_current %} <span class="pill pill-tag">en cours</span>{% endif %}<br>
+          <span class="small muted">{{ e.date|datefr }}</span> {{ m.vote_pill(votes.get(e.id)) }}
+        </div>
+        <select name="voted" onchange="this.form.submit()" style="width:auto">
+          {% set rec = votes.get(e.id) %}
+          <option value="inconnu" {{ 'selected' if rec is none }}>Inconnu</option>
+          <option value="oui" {{ 'selected' if rec and rec.voted }}>A voté</option>
+          <option value="non" {{ 'selected' if rec and not rec.voted }}>N'a pas voté</option>
+        </select>
+      </form>
+      {% else %}
+      <p class="muted small">Aucune élection définie.{% if is_admin %} <a href="{{ url_for('admin.index') }}">En créer une</a>.{% endif %}</p>
+      {% endfor %}
+    </div>
+
+    {% if contact.email %}
+    <div class="card">
+      <details>
+        <summary>Envoyer un e-mail</summary>
+        <form method="post" action="{{ url_for('contacts.email', contact_id=contact.id) }}" style="margin-top:.75rem">
+          {{ m.csrf() }}
+          <div class="field"><label>Objet</label><input name="subject" required></div>
+          <div class="field"><label>Message</label><textarea name="body" required>Bonjour {{ contact.first_name }},
+
+</textarea></div>
+          <button class="btn">Envoyer</button>
+        </form>
+      </details>
+    </div>
+    {% endif %}
+
+    {% if contact.documents %}
+    <div class="card">
+      <h2>Documents</h2>
+      <ul>{% for d in contact.documents %}<li><a href="{{ url_for('documents.show', doc_id=d.id) }}">{{ d.original_name }}</a> <span class="small muted">{{ d.created_at|datefr }}</span></li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

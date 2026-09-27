@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Administration{% endblock %}
+{% block content %}
+{% macro csrf() %}<input type="hidden" name="_csrf" value="{{ csrf_token() }}">{% endmacro %}
+<h1>Administration</h1>
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Comptes</h2>
+    <table>
+      <tr><th>Identifiant</th><th>Rôle</th><th>Statut</th><th>Dernière connexion</th><th>Actions</th></tr>
+      {% for u in users %}
+      <tr>
+        <td><strong>{{ u.username }}</strong><br><span class="small muted">{{ u.full_name or '' }}</span></td>
+        <td>{{ 'Administrateur' if u.is_admin else 'Utilisateur' }}</td>
+        <td>{{ 'Actif' if u.active else 'Désactivé' }}</td>
+        <td class="small">{{ u.last_login|datefr(true) }}</td>
+        <td class="small">
+          {% if u.id != current_user.id %}
+          <form class="inline-form" method="post" action="{{ url_for('admin.update_user', user_id=u.id) }}">{{ csrf() }}<button class="link-btn" name="action" value="role">{{ 'Rétrograder' if u.is_admin else 'Passer admin' }}</button></form> ·
+          <form class="inline-form" method="post" action="{{ url_for('admin.update_user', user_id=u.id) }}">{{ csrf() }}<button class="link-btn {{ 'danger' if u.active }}" name="action" value="toggle">{{ 'Désactiver' if u.active else 'Réactiver' }}</button></form>
+          {% endif %}
+          <form method="post" action="{{ url_for('admin.update_user', user_id=u.id) }}" class="row" style="margin-top:.3rem">{{ csrf() }}
+            <input type="password" name="password" placeholder="Nouveau mot de passe" minlength="8" style="width:160px" autocomplete="new-password">
+            <button class="btn btn-sm btn-light" name="action" value="password">OK</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    <h2 style="margin-top:1.25rem">Créer un compte</h2>
+    <form method="post" action="{{ url_for('admin.create_user') }}">
+      {{ csrf() }}
+      <div class="grid grid-3">
+        <div class="field"><label>Identifiant</label><input name="username" required autocomplete="off"></div>
+        <div class="field"><label>Nom complet</label><input name="full_name"></div>
+        <div class="field"><label>Rôle</label><select name="role"><option value="user">Utilisateur</option><option value="admin">Administrateur</option></select></div>
+        <div class="field"><label>Mot de passe</label><input type="password" name="password" required minlength="8" autocomplete="new-password"></div>
+        <div class="field"><label>Confirmation</label><input type="password" name="confirm" required minlength="8" autocomplete="new-password"></div>
+      </div>
+      <button class="btn">Créer le compte</button>
+    </form>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Élections</h2>
+      {% for e in elections %}
+      <div class="row spread" style="margin-bottom:.4rem">
+        <div><strong>{{ e.name }}</strong> <span class="small muted">{{ e.date|datefr }}</span>{% if e.is_current %} <span class="pill pill-linked">en cours</span>{% endif %}</div>
+        <div class="small">
+          {% if not e.is_current %}<form class="inline-form" method="post" action="{{ url_for('admin.elections') }}">{{ csrf() }}<input type="hidden" name="election_id" value="{{ e.id }}"><button class="link-btn" name="action" value="current">Définir en cours</button></form> · {% endif %}
+          <form class="inline-form" method="post" action="{{ url_for('admin.elections') }}" onsubmit="return confirm('Supprimer cette élection et les participations associées ?')">{{ csrf() }}<input type="hidden" name="election_id" value="{{ e.id }}"><button class="link-btn danger" name="action" value="delete">Supprimer</button></form>
+        </div>
+      </div>
+      {% else %}<p class="muted small">Aucune élection.</p>{% endfor %}
+      <form method="post" action="{{ url_for('admin.elections') }}" class="row" style="margin-top:.75rem">
+        {{ csrf() }}
+        <input name="name" placeholder="Ex. Municipales 2026 — 1er tour" required style="flex:1">
+        <input type="date" name="date" style="width:auto">
+        <button class="btn btn-sm" name="action" value="create">Ajouter</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Messagerie</h2>
+      <p class="small">Reliez la boîte mail de la campagne pour importer automatiquement les échanges.</p>
+      <a class="btn btn-light" href="{{ url_for('admin.mail_settings') }}">Configurer la boîte mail</a>
+    </div>
+
+    <div class="card">
+      <h2>Import / export</h2>
+      <form method="post" action="{{ url_for('admin.import_csv') }}" enctype="multipart/form-data">
+        {{ csrf() }}
+        <div class="field"><label>Importer des contacts (CSV)</label><input type="file" name="file" accept=".csv,text/csv" required></div>
+        <p class="small muted">Colonnes reconnues : civilite, prenom, nom, email, telephone, adresse, code_postal, ville, bureau_vote, tags, notes. Séparateur ; ou ,. Les contacts existants (même e-mail) sont mis à jour.</p>
+        <button class="btn btn-sm">Importer</button>
+      </form>
+      <p style="margin-top:1rem"><a class="btn btn-light btn-sm" href="{{ url_for('admin.export_csv') }}">Exporter tous les contacts (CSV)</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}
